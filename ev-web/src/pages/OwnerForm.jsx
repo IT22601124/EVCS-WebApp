@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { getOwner, createOwner, updateOwner } from '../services/owners'
+import toast from 'react-hot-toast'
 
 export default function OwnerForm(){
   const { nic } = useParams()
@@ -10,9 +11,16 @@ export default function OwnerForm(){
   useEffect(()=>{ if(editing){ getOwner(nic).then(setForm) } },[nic])
   const save = async (e)=>{
     e.preventDefault()
-    if(editing) await updateOwner(form.nic, form)
-    else await createOwner(form)
-    nav('/owners')
+    try{
+      if(editing) await updateOwner(form.nic, form)
+      else await createOwner(form)
+      toast.success('Saved')
+  nav('/app/owners')
+    }catch(err){
+      console.error(err)
+      const msg = err?.response?.data?.title || err?.response?.data || err?.message || 'Save failed'
+      toast.error(String(msg))
+    }
   }
   return (
     <form onSubmit={save} className="max-w-xl space-y-3">
@@ -23,7 +31,7 @@ export default function OwnerForm(){
       <input className="border rounded px-3 py-2 w-full" placeholder="Phone" value={form.phone} onChange={e=>setForm({...form, phone:e.target.value})}/>
       <div className="flex gap-2">
         <button className="bg-blue-600 text-white px-3 py-2 rounded">Save</button>
-        <button type="button" className="border px-3 py-2 rounded" onClick={()=>nav('/owners')}>Cancel</button>
+  <button type="button" className="border px-3 py-2 rounded" onClick={()=>nav('/app/owners')}>Cancel</button>
       </div>
     </form>
   )

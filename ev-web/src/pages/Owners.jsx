@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { listOwners, deactivateOwner, reactivateOwner, createOwner } from '../services/owners'
+import { listOwners, getOwner, deactivateOwner, reactivateOwner, createOwner } from '../services/owners'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 
@@ -10,7 +10,26 @@ export default function Owners(){
   const [selected,setSelected]=useState(null) // owner selected for modal
   const [busyNic, setBusyNic] = useState(null)
 
-  const load = async ()=> setItems(await listOwners())
+  const load = async ()=>{
+    let items = await listOwners()
+    
+
+    // For any item missing human-friendly fields but with an _id, try to fetch a full owner record
+    const enhanced = await Promise.all(items.map(async it =>{
+      if((!it.FullName || it.FullName === '') && it._raw && (it._raw._id || it._raw.id)){
+        try{
+          const full = await getOwner(it._raw._id ?? it._raw.id)
+          return full ?? it
+        }catch(e){
+          console.warn('getOwner fallback failed for', it._raw._id ?? it._raw.id, e)
+          return it
+        }
+      }
+      return it
+    }))
+
+    setItems(enhanced)
+  }
 
   async function onCreate(e){
     e.preventDefault()
@@ -172,6 +191,7 @@ export default function Owners(){
           </div>
         </div>
       )}
+      
     </div>
   )
 }

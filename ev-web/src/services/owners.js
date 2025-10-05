@@ -2,12 +2,31 @@ import api from '../api/client'
 
 export async function listOwners(){
   const res = await api.get('/api/Owners')
-  return res.data || []
+  const items = res.data || []
+  // normalize owner shape to PascalCase expected by the UI/backend DTOs
+  return items.map(o => ({
+    Nic: o?.Nic ?? o?.nic ?? o?._id ?? o?.id,
+    FullName: o?.FullName ?? o?.fullName ?? o?.full_name ?? '',
+    Email: o?.Email ?? o?.email ?? '',
+    Phone: o?.Phone ?? o?.phone ?? '',
+    IsActive: o?.IsActive ?? o?.isActive ?? o?.active ?? false,
+    // keep original data handy
+    _raw: o,
+  }))
 }
 
 export async function getOwner(nic){
   const res = await api.get(`/api/Owners/${nic}`)
-  return res.data
+  const o = res.data
+  if(!o) return o
+  return {
+    Nic: o?.Nic ?? o?.nic ?? o?._id ?? o?.id,
+    FullName: o?.FullName ?? o?.fullName ?? o?.full_name ?? '',
+    Email: o?.Email ?? o?.email ?? '',
+    Phone: o?.Phone ?? o?.phone ?? '',
+    IsActive: o?.IsActive ?? o?.isActive ?? o?.active ?? false,
+    _raw: o,
+  }
 }
 
 // Use the public registration endpoint which creates both owner and a user account

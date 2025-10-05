@@ -1,6 +1,6 @@
 
 import { useEffect, useMemo, useState } from "react";
-import { listUsers, createUser } from "../services/users";
+import { listUsers, createUser, deactivateUser, activateUser } from "../services/users";
 import { listStations } from "../services/stations";
 import {
   getAssignments,
@@ -43,6 +43,19 @@ function StationBadge({ station }) {
   );
 }
 
+function RoleBadge({ role }) {
+  const cls = role === 'Operator' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-indigo-50 text-indigo-700 border-indigo-200';
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 text-xs rounded border ${cls}`}>{role}</span>
+  )
+}
+
+function ActiveBadge({ isActive }) {
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 text-xs rounded border ${isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'}`}>{isActive ? 'Active' : 'Inactive'}</span>
+  )
+}
+
 export default function Users() {
   const [users, setUsers] = useState([]);
   const [stations, setStations] = useState([]);
@@ -58,6 +71,10 @@ export default function Users() {
     role: "Operator",
     stationId: "",
   });
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalEditMode, setModalEditMode] = useState(false);
+  const [modalSelection, setModalSelection] = useState("");
   const [query, setQuery] = useState("");
 
   async function refresh() {
@@ -77,16 +94,15 @@ export default function Users() {
 
   useEffect(() => { refresh(); }, []);
 
-  const operators = useMemo(
-    () => (users || []).filter((x) => x.role === "Operator"),
-    [users]
-  );
+  // operators list (only Operator role)
+  const operators = useMemo(() => (users || []).filter((x) => x.role === "Operator"), [users]);
 
   const visibleUsers = useMemo(() => {
     const q = (query || "").trim().toLowerCase();
-    if (!q) return users || [];
+    if (!q) return (users || []).filter(u => u && u.role !== 'Owner');
     return (users || []).filter((u) => {
       if (!u) return false;
+      if (u.role === 'Owner') return false;
       const username = (u.username || "").toLowerCase();
       const role = (u.role || "").toLowerCase();
       if (username.includes(q) || role.includes(q)) return true;
@@ -137,6 +153,30 @@ export default function Users() {
       console.error(e);
       const msg = e?.response?.data?.error || "Create user failed";
       toast.error(String(msg));
+    }
+  }
+
+  async function handleDeactivate(username) {
+    try {
+      await deactivateUser(username);
+      toast.success('User deactivated');
+      await refresh();
+      setModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Failed to deactivate');
+    }
+  }
+
+  async function handleActivate(username) {
+    try {
+      await activateUser(username);
+      toast.success('User activated');
+      await refresh();
+      setModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Failed to activate');
     }
   }
 
@@ -276,12 +316,13 @@ export default function Users() {
                   {visibleUsers.map((u, i) => {
                     const assigned = u.role === "Operator" ? stationAssignedTo(u.username) : null;
                     const isEditing = editSelection[u.username] !== undefined;
+                    const isModalEditingThis = modalOpen && selectedUser && selectedUser.username === u.username && modalEditMode;
 
                     return (
-                      <tr key={safeRowKey(u, i)} className="border-t">
+                      <tr key={safeRowKey(u, i)} className="border-t" onClick={() => { setSelectedUser(u); setModalOpen(true); setModalEditMode(false); setModalSelection(''); }} style={{ cursor: 'pointer' }}>
                         <td className="px-4 py-3 font-medium">{u?.username ?? "—"}</td>
-                        <td className="px-4 py-3 text-center">{u?.role ?? "—"}</td>
-                        <td className="px-4 py-3 text-center">{u?.isActive ? "Yes" : "No"}</td>
+                        <td className="px-4 py-3 text-center"><RoleBadge role={u?.role ?? '—'} /></td>
+                        <td className="px-4 py-3 text-center"><ActiveBadge isActive={u?.isActive} /></td>
 
                         <td className="px-4 py-3">
                           {u.role === "Operator" ? (
@@ -301,13 +342,15 @@ export default function Users() {
                         <td className="px-4 py-3">
                           {u.role !== "Operator" ? (
                             <span className="text-slate-400">—</span>
+                          ) : isModalEditingThis ? (
+                            <span className="text-sm text-slate-500">Editing in modal…</span>
                           ) : !isEditing ? (
-                            <button className="border px-3 py-1.5 rounded hover:bg-slate-50" onClick={() => beginEdit(u.username)}>
+                            <button className="border px-3 py-1.5 rounded hover:bg-slate-50" onClick={(e) => { e.stopPropagation(); beginEdit(u.username); setSelectedUser(u); setModalOpen(true); setModalEditMode(true); setModalSelection(stationAssignedTo(u.username)?.id ?? ''); setEditSelection((m) => { const c = { ...m }; delete c[u.username]; return c; }); }}>
                               {assigned ? "Reassign" : "Assign"}
                             </button>
                           ) : (
                             <div className="flex items-center gap-2">
-                              <select className="border rounded px-2 py-1" value={editSelection[u.username] ?? ""} onChange={(e) => setEditSelection((m) => ({ ...m, [u.username]: e.target.value }))}>
+                              <select className="border rounded px-2 py-1" value={editSelection[u.username] ?? ""} onChange={(e) => setEditSelection((m) => ({ ...m, [u.username]: e.target.value }))} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
                                 <option value="">— Unassigned —</option>
                                 {stations.map((s, idx) => (
                                   <option key={s.id ?? `s-${idx}`} value={s.id}>{prettyId("STATION", s.id)} — {s.name}{s.isActive ? "" : " (Inactive)"}</option>
@@ -331,16 +374,16 @@ export default function Users() {
                 const assigned = u.role === "Operator" ? stationAssignedTo(u.username) : null;
                 const isEditing = editSelection[u.username] !== undefined;
                 return (
-                  <div key={safeRowKey(u, i)} className="bg-white border rounded-xl p-4">
+                  <div key={safeRowKey(u, i)} className="bg-white border rounded-xl p-4" onClick={() => { setSelectedUser(u); setModalOpen(true); setModalEditMode(false); setModalSelection(''); }} style={{ cursor: 'pointer' }}>
                     <div className="flex justify-between items-start">
                       <div>
                         <div className="font-medium text-base">{u.username}</div>
-                        <div className="text-xs text-slate-500">{u.role} • {u.isActive ? 'Active' : 'Inactive'}</div>
+                        <div className="text-xs text-slate-500"><RoleBadge role={u.role} /> <span className="mx-2">•</span> <ActiveBadge isActive={u.isActive} /></div>
                         {assigned ? <div className="mt-2 text-xs text-slate-500">{prettyId('STATION', assigned.id)} • {assigned.name}</div> : null}
                       </div>
                       <div>
-                        {!isEditing ? (
-                          u.role === 'Operator' ? <button className="border px-3 py-1 rounded text-xs" onClick={() => beginEdit(u.username)}>{assigned ? 'Reassign' : 'Assign'}</button> : <span className="text-slate-400 text-xs">—</span>
+                          {!isEditing ? (
+                          u.role === 'Operator' ? <button className="border px-3 py-1 rounded text-xs" onClick={(e) => { e.stopPropagation(); beginEdit(u.username); setSelectedUser(u); setModalOpen(true); setModalEditMode(true); setModalSelection(stationAssignedTo(u.username)?.id ?? ''); setEditSelection((m) => { const c = { ...m }; delete c[u.username]; return c; }); }}>{assigned ? 'Reassign' : 'Assign'}</button> : <span className="text-slate-400 text-xs">—</span>
                         ) : (
                           <div className="flex gap-2">
                             <select className="border rounded px-2 py-1 text-sm" value={editSelection[u.username] ?? ''} onChange={(e) => setEditSelection((m) => ({ ...m, [u.username]: e.target.value }))}>
@@ -361,6 +404,60 @@ export default function Users() {
           </>
         )}
       </div>
+
+        {/* Details modal */}
+        {modalOpen && selectedUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setModalOpen(false)}></div>
+            <div className="bg-white rounded-xl p-6 z-10 w-full max-w-lg">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold">User details</h2>
+                <button className="text-slate-500 text-sm" onClick={() => setModalOpen(false)}>Close</button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-xs text-slate-500">Username</div>
+                  <div className="font-medium">{selectedUser.username}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-500">Role</div>
+                  <div className="font-medium">{selectedUser.role}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-500">Active</div>
+                  <div className="font-medium">{selectedUser.isActive ? 'Yes' : 'No'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-500">Assigned Station</div>
+                  <div className="font-medium">{selectedUser.role === 'Operator' ? (stationAssignedTo(selectedUser.username)?.name ?? '—') : '—'}</div>
+                </div>
+              </div>
+              <div className="mt-6">
+                {!modalEditMode ? (
+                  <div className="flex gap-2">
+                    <button className="border px-3 py-2 rounded" onClick={(e) => { e.stopPropagation(); setModalEditMode(true); setModalSelection(stationAssignedTo(selectedUser.username)?.id ?? ''); }}>Edit assignment</button>
+                    {selectedUser.isActive ? (
+                      <button className="bg-rose-600 text-white px-3 py-2 rounded" onClick={(e) => { e.stopPropagation(); handleDeactivate(selectedUser.username); }}>Deactivate</button>
+                    ) : (
+                      <button className="bg-emerald-600 text-white px-3 py-2 rounded" onClick={(e) => { e.stopPropagation(); handleActivate(selectedUser.username); }}>Activate</button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <select className="border rounded px-3 py-2" value={modalSelection} onChange={(e) => setModalSelection(e.target.value)} onClick={(e) => e.stopPropagation()}>
+                      <option value="">— Unassigned —</option>
+                      {stations.map((s) => (
+                        <option key={s.id} value={s.id}>{prettyId('STATION', s.id)} — {s.name}</option>
+                      ))}
+                    </select>
+                    <button className="bg-blue-600 text-white px-3 py-2 rounded" onClick={async (e) => { e.stopPropagation(); if (!selectedUser) return; const username = selectedUser.username; try { if (!modalSelection) { unassignOperator(username); } else { assignOperatorToStation(modalSelection, username); } toast.success('Assignment updated'); await refresh(); setModalEditMode(false); setModalSelection(''); setEditSelection((m) => { const c = { ...m }; delete c[username]; return c; }); } catch (err) { console.error(err); toast.error('Failed to update assignment'); } }}>Save</button>
+                    <button className="border px-3 py-2 rounded" onClick={(e) => { e.stopPropagation(); setModalEditMode(false); setModalSelection(''); if (selectedUser) { const username = selectedUser.username; setEditSelection((m) => { const c = { ...m }; delete c[username]; return c; }); } }}>Cancel</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   );
 }

@@ -45,7 +45,19 @@ export default function Login(){
 
       console.debug('[auth] apiLogin succeeded for', u)
       toast.success('Logged in')
-      nav('/app')
+      // attempt to extract role from stored token
+      const raw = localStorage.getItem('jwt') || localStorage.getItem('jwt_mock')
+      let role = null
+      try{
+        if(raw){
+          const parsed = typeof raw === 'string' && raw.trim().startsWith('{') ? JSON.parse(raw) : JSON.parse(atob(raw.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')))
+          role = parsed?.role || parsed?.roles || parsed?.Role || parsed?.['http://schemas.microsoft.com/ws/2008/06/identity/claims/role']
+          if(Array.isArray(role)) role = role[0]
+        }
+      }catch(e){ /* ignore */ }
+
+      if(role === 'Operator') nav('/app/operator')
+      else nav('/app')
     }catch(e){
       // Log full error for debugging
       console.error('[auth] login failed', e, e?.response?.data)

@@ -13,6 +13,7 @@ import Bookings from './pages/Bookings'
 import BookingForm from './pages/BookingForm'
 import BookingQR from './pages/BookingQR'
 import Users from './pages/Users'
+import OperatorDashboard from './pages/OperatorDashboard'
 import RequireRole from './auth/RequireRole'
 import { Toaster } from 'react-hot-toast'
 
@@ -92,6 +93,7 @@ export default function App() {
           <Route path="bookings/new" element={<BookingForm />} />
           <Route path="bookings/:id" element={<BookingForm />} />
           <Route path="bookings/:id/qr" element={<BookingQR />} />
+          <Route path="operator" element={<RequireRole roles={["Operator"]}><OperatorDashboard/></RequireRole>} />
         </Route>
       </Routes>
       <Toaster/>

@@ -76,6 +76,7 @@ export default function Users() {
   const [modalEditMode, setModalEditMode] = useState(false);
   const [modalSelection, setModalSelection] = useState("");
   const [query, setQuery] = useState("");
+  const [lastCreatedUserRaw, setLastCreatedUserRaw] = useState(null);
 
   async function refresh() {
     setLoading(true);
@@ -147,6 +148,14 @@ export default function Users() {
       }
 
       toast.success(`${created.role} created`);
+      // fetch created user for debug/verification and show in panel
+      try {
+        const full = await getUser(created.username);
+        setLastCreatedUserRaw(full);
+      } catch (err) {
+        // ignore - not critical
+        console.debug('Failed to fetch created user', err);
+      }
       setForm({ username: "", password: "", role: "Operator", stationId: "" });
       await refresh();
     } catch (e) {
@@ -291,6 +300,17 @@ export default function Users() {
           </button>
         </div>
       </form>
+
+      {/* Debug panel: show GET /api/Users/{username} response after create (temporary) */}
+      {lastCreatedUserRaw && (
+        <div className="bg-white border rounded p-3 mt-3 text-xs">
+          <div className="flex items-center justify-between mb-2">
+            <div className="font-medium">Debug: created user (GET /api/Users/{username})</div>
+            <button className="text-xs text-slate-500" onClick={() => setLastCreatedUserRaw(null)}>Clear</button>
+          </div>
+          <pre className="whitespace-pre-wrap max-h-64 overflow-auto text-xs">{JSON.stringify(lastCreatedUserRaw, null, 2)}</pre>
+        </div>
+      )}
 
       {/* List: table on md+, cards on small */}
       <div>

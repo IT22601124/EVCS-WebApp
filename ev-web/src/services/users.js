@@ -62,6 +62,24 @@ export async function updateUser(username, req) {
   }
 }
 
+export async function getUser(username) {
+  try {
+    const data = await api.getUser(username);
+    return data;
+  } catch (err) {
+    const msg =
+      err?.response?.data?.error ||
+      err?.response?.data?.title ||
+      err?.response?.data?.detail ||
+      err?.message ||
+      "Unknown error";
+    const e = new Error(String(msg));
+    e.httpStatus = err?.response?.status;
+    e.raw = err;
+    throw e;
+  }
+}
+
 export async function deactivateUser(username) {
   // Prefer a dedicated endpoint if the API exposes it, but fall back to a full PUT update
   try {

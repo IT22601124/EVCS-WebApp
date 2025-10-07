@@ -14,6 +14,12 @@ export const getUser = (username) => {
   return api.get(`/api/Users/${encodeURIComponent(username)}`).then(r => r.data)
 }
 
+// Fetch the current authenticated user (server may expose /api/Users/me)
+export const getCurrentUser = () => {
+  console.debug('[api] GET /api/Users/me requesting baseURL=', api.defaults.baseURL)
+  return api.get(`/api/Users/me`).then(r => r.data)
+}
+
 export const createUser = (dto) => {
   console.debug('[api] POST /api/Users requesting baseURL=', api.defaults.baseURL, 'payload=', dto)
   return api.post(`/api/Users`, dto).then(r => r.data)

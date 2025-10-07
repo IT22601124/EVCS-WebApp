@@ -80,6 +80,17 @@ export async function getUser(username) {
   }
 }
 
+export async function getCurrentUser(){
+  try{
+    const data = await api.getCurrentUser()
+    return data
+  }catch(err){
+    const e = new Error('Failed to fetch current user')
+    e.raw = err
+    throw e
+  }
+}
+
 export async function deactivateUser(username) {
   // Prefer a dedicated endpoint if the API exposes it, but fall back to a full PUT update
   try {

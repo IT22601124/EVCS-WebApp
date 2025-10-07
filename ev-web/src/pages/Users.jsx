@@ -1,6 +1,6 @@
 
 import { useEffect, useMemo, useState } from "react";
-import { listUsers, createUser, deactivateUser, activateUser } from "../services/users";
+import { listUsers, createUser, deactivateUser, activateUser, getUser, updateUser } from "../services/users";
 import { listStations } from "../services/stations";
 import {
   getAssignments,
@@ -145,6 +145,14 @@ export default function Users() {
 
       if (form.role === "Operator") {
         assignOperatorToStation(form.stationId, created.username);
+        // persist assignment to backend (best-effort)
+        try {
+          const u = await getUser(created.username);
+          const patched = { ...u, assignedStationId: form.stationId, AssignedStationId: form.stationId };
+          await updateUser(created.username, patched);
+        } catch (err) {
+          console.debug('Failed to persist operator assignment on create', err);
+        }
       }
 
       toast.success(`${created.role} created`);
@@ -204,9 +212,25 @@ export default function Users() {
       // unassign
       unassignOperator(username);
       toast.success("Operator unassigned");
+      // persist unassignment to backend (best-effort)
+      try {
+        const u = await getUser(username);
+        const patched = { ...u, assignedStationId: null, AssignedStationId: null };
+        await updateUser(username, patched);
+      } catch (err) {
+        console.debug('Failed to persist unassignment', err);
+      }
     } else {
       assignOperatorToStation(targetStationId, username);
       toast.success("Assignment updated");
+      // persist assignment to backend (best-effort)
+      try {
+        const u = await getUser(username);
+        const patched = { ...u, assignedStationId: targetStationId, AssignedStationId: targetStationId };
+        await updateUser(username, patched);
+      } catch (err) {
+        console.debug('Failed to persist assignment', err);
+      }
     }
 
     // clear edit selection for that user, refresh table state
@@ -470,7 +494,7 @@ export default function Users() {
                         <option key={s.id} value={s.id}>{prettyId('STATION', s.id)} — {s.name}</option>
                       ))}
                     </select>
-                    <button className="bg-blue-600 text-white px-3 py-2 rounded" onClick={async (e) => { e.stopPropagation(); if (!selectedUser) return; const username = selectedUser.username; try { if (!modalSelection) { unassignOperator(username); } else { assignOperatorToStation(modalSelection, username); } toast.success('Assignment updated'); await refresh(); setModalEditMode(false); setModalSelection(''); setEditSelection((m) => { const c = { ...m }; delete c[username]; return c; }); } catch (err) { console.error(err); toast.error('Failed to update assignment'); } }}>Save</button>
+                    <button className="bg-blue-600 text-white px-3 py-2 rounded" onClick={async (e) => { e.stopPropagation(); if (!selectedUser) return; const username = selectedUser.username; try { if (!modalSelection) { unassignOperator(username); try { const u = await getUser(username); const patched = { ...u, assignedStationId: null, AssignedStationId: null }; await updateUser(username, patched); } catch(err){ console.debug('Failed to persist unassignment (modal)', err); } } else { assignOperatorToStation(modalSelection, username); try { const u = await getUser(username); const patched = { ...u, assignedStationId: modalSelection, AssignedStationId: modalSelection }; await updateUser(username, patched); } catch(err){ console.debug('Failed to persist assignment (modal)', err); } } toast.success('Assignment updated'); await refresh(); setModalEditMode(false); setModalSelection(''); setEditSelection((m) => { const c = { ...m }; delete c[username]; return c; }); } catch (err) { console.error(err); toast.error('Failed to update assignment'); } }}>Save</button>
                     <button className="border px-3 py-2 rounded" onClick={(e) => { e.stopPropagation(); setModalEditMode(false); setModalSelection(''); if (selectedUser) { const username = selectedUser.username; setEditSelection((m) => { const c = { ...m }; delete c[username]; return c; }); } }}>Cancel</button>
                   </div>
                 )}

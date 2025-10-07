@@ -14,6 +14,10 @@ import BookingForm from './pages/BookingForm'
 import BookingQR from './pages/BookingQR'
 import Users from './pages/Users'
 import OperatorDashboard from './pages/OperatorDashboard'
+import OperatorBookings from './pages/OperatorBookings'
+import { useMemo } from 'react'
+import { useAuth } from './auth/useAuth'
+import { Navigate } from 'react-router-dom'
 import RequireRole from './auth/RequireRole'
 import { Toaster } from 'react-hot-toast'
 
@@ -35,7 +39,7 @@ export default function App() {
             </RequireRole>
           }
         >
-          <Route index element={<Dashboard />} />
+            <Route index element={<AppIndex />} />
 
           <Route
             path="users"
@@ -71,7 +75,7 @@ export default function App() {
             }
           />
 
-          <Route path="stations" element={<Stations />} />
+          <Route path="stations" element={<RequireRole roles={['Backoffice']}><Stations /></RequireRole>} />
           <Route
             path="stations/new"
             element={
@@ -89,14 +93,22 @@ export default function App() {
             }
           />
 
-          <Route path="bookings" element={<Bookings />} />
-          <Route path="bookings/new" element={<BookingForm />} />
-          <Route path="bookings/:id" element={<BookingForm />} />
-          <Route path="bookings/:id/qr" element={<BookingQR />} />
+          <Route path="bookings" element={<RequireRole roles={['Backoffice']}><Bookings /></RequireRole>} />
+          <Route path="bookings/new" element={<RequireRole roles={['Backoffice']}><BookingForm /></RequireRole>} />
+          <Route path="bookings/:id" element={<RequireRole roles={['Backoffice']}><BookingForm /></RequireRole>} />
+          <Route path="bookings/:id/qr" element={<RequireRole roles={['Backoffice']}><BookingQR /></RequireRole>} />
           <Route path="operator" element={<RequireRole roles={["Operator"]}><OperatorDashboard/></RequireRole>} />
+          <Route path="operator/bookings" element={<RequireRole roles={["Operator"]}><OperatorBookings/></RequireRole>} />
         </Route>
       </Routes>
       <Toaster/>
     </BrowserRouter>
   )
+}
+
+function AppIndex(){
+  // small inline component to choose landing page based on role
+  const { role } = useAuth()
+  if(role === 'Operator') return <Navigate to="/app/operator" replace />
+  return <Dashboard />
 }

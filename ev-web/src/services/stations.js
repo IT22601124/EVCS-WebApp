@@ -1,15 +1,36 @@
 import * as api from '../api/stations'
 
-const mapFromApi = (s) => ({
-  id: s.id,
-  name: s.name,
-  address: s.address,
-  latitude: s.latitude,
-  longitude: s.longitude,
-  type: s.type,
-  slots: s.slots,
-  active: s.isActive ?? s.active ?? true,
-})
+const normalizeString = (v) => {
+  if (v === null || v === undefined) return null
+  try {
+    const t = String(v).trim()
+    return t === '' ? null : t
+  } catch (e) {
+    return null
+  }
+}
+
+const mapFromApi = (s) => {
+  // Accept both camelCase and PascalCase shapes from different backends/clients
+  const id = s.id ?? s.ID ?? s.stationId ?? s.StationId
+  // prefer any name-like field, trim whitespace and fall back to id when missing
+  const rawName = s.name ?? s.Name ?? s.stationName ?? s.StationName
+  const name = normalizeString(rawName) || id
+  const rawAddress = s.address ?? s.Address ?? s.location ?? s.Location
+  const address = normalizeString(rawAddress)
+  return {
+    id,
+    name,
+    address,
+    latitude: s.latitude ?? s.Latitude,
+    longitude: s.longitude ?? s.Longitude,
+    type: s.type ?? s.Type,
+    slots: s.slots ?? s.Slots ?? s.slotCount ?? s.SlotCount ?? 0,
+    active: s.isActive ?? s.IsActive ?? s.active ?? true,
+    // backend may include assigned operator in different casings
+    assignedOperator: s.assignedOperator ?? s.AssignedOperator ?? s.assigned_operator ?? s.Assigned_Operator ?? null,
+  }
+}
 
 export async function listStations(){
   const data = await api.listStations()

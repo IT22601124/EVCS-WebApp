@@ -24,6 +24,7 @@ export default function AppLayout(){
           <>
             <Link to="/app/stations" className={`block px-3 py-2 rounded ${active('/app/stations')}`}>Stations</Link>
             <Link to="/app/bookings" className={`block px-3 py-2 rounded ${active('/app/bookings')}`}>Bookings</Link>
+            <Link to="/app/schedules" className={`block px-3 py-2 rounded ${active('/app/schedules')}`}>Schedules</Link>
           </>
         ) : (
           // Operator links

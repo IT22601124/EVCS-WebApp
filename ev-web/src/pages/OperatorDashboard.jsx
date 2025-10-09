@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../auth/useAuth'
-import { getAssignments } from '../services/operatorAssignments'
 import { getUser, getCurrentUser } from '../services/users'
 import { listStations } from '../services/stations'
-import { listBookings } from '../services/bookings'
+import { getAssignments } from '../services/operatorAssignments'
+import { listBookingsAggregate } from '../services/bookings'
 import toast from 'react-hot-toast'
 
 export default function OperatorDashboard(){
@@ -20,10 +20,9 @@ export default function OperatorDashboard(){
     async function load(){
       setLoading(true)
       try{
-        const [s,b] = await Promise.all([listStations(), listBookings()])
+        const s = await listStations()
         setStations(s || [])
-        setBookings(b || [])
-      }catch(e){ console.error(e); toast.error('Failed to load operator dashboard') }
+      }catch(e){ console.error(e); toast.error('Failed to load stations') }
       finally{ setLoading(false) }
     }
     load()
@@ -64,33 +63,43 @@ export default function OperatorDashboard(){
     async function fetchAssigned(){
       if(!username || loading) return
       try{
-        // try to fetch the user by username (may be admin-only)
-        let u = null
-        try { u = await getUser(username) } catch(e) { 
-          // if forbidden, mark it
-          if(e?.raw?.response?.status === 403) setUserFetchForbidden(true)
-          u = null 
-        }
-        // fallback to current user endpoint which should be available to operators
-        if(!u){
-          try { u = await getCurrentUser() } catch(e) { 
-            if(e?.raw?.response?.status === 403) setUserFetchForbidden(true)
-            u = null 
-          }
-        }
+        // Operators should call the non-admin endpoint only
+        const u = await getCurrentUser()
         const assigned = u?.assignedStationId ?? u?.AssignedStationId ?? null
         if(assigned && mounted){
           setAssignedStationId(assigned)
         }
-      }catch(e){ console.debug('Failed to resolve assignment from user record', e) }
+      }catch(e){ 
+        // if fetching current user fails, mark it for debugging but don't call admin-only endpoints
+        console.debug('Failed to fetch current user for assignment resolution', e)
+        setUserFetchForbidden(true)
+      }
     }
     fetchAssigned()
     return ()=>{ mounted = false }
   }, [username, loading])
 
+  // Load bookings for myStation (server-side fetch)
+  useEffect(()=>{
+    let mounted = true
+    async function loadBookings(){
+      if(!username || loading) return
+      try{
+        // prefer explicit assignedStationId, otherwise check frontend assignments
+        const assigned = assignedStationId ? [assignedStationId] : Object.entries(getAssignments()).filter(([sid,u])=> Array.isArray(u) ? u.includes(username) : u===username).map(([sid])=>sid)
+        if(assigned.length === 0){ setBookings([]); return }
+        const jobs = assigned.map(sid => listBookingsAggregate({ stationId: sid }).catch(()=>[]))
+        const results = await Promise.all(jobs)
+        if(mounted) setBookings(results.flat())
+      }catch(e){ console.error(e) }
+    }
+    loadBookings()
+    return ()=>{ mounted = false }
+  }, [username, loading, assignedStationId])
+
   const myBookings = useMemo(()=>{
     if(!myStation) return []
-    return (bookings || []).filter(b => b.stationId === myStation.id)
+    return (bookings || []).filter(b => (b.stationId === myStation.id) || (b.StationId === myStation.id))
   }, [bookings, myStation])
 
   // derive slot stats from station and bookings (mocked values if slots missing)
@@ -130,7 +139,13 @@ export default function OperatorDashboard(){
         loading ? (
           <div className="bg-white border rounded p-6 text-slate-500">Loading station…</div>
         ) : (
-          <div className="bg-white border rounded p-6 text-slate-500">You are not assigned to a station.</div>
+          <div className="bg-white border rounded p-6 text-slate-500">
+            <div className="mb-2">You are not assigned to a station.</div>
+            <div className="text-sm text-slate-600">Ask an administrator to assign you, or request assignment below.</div>
+            <div className="mt-4">
+              <button className="px-3 py-2 rounded bg-blue-600 text-white" onClick={()=>{toast('Request sent to admin (simulated)');}}>Request assignment</button>
+            </div>
+          </div>
         )
       ) : (
         <div className="space-y-4">
@@ -188,6 +203,29 @@ export default function OperatorDashboard(){
                 </div>
               ))}
             </div>
+          </div>
+          <div className="bg-white border rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-medium">Upcoming Bookings for this Station</h3>
+              <div className="text-sm text-slate-500">Count: {myBookings.length}</div>
+            </div>
+            {myBookings.length===0 ? (
+              <div className="text-sm text-slate-500">No bookings found for this station.</div>
+            ) : (
+              <div className="space-y-3">
+                {myBookings.map(b => (
+                  <div key={b.id} className="border rounded p-3">
+                    <div className="flex justify-between">
+                      <div>
+                        <div className="font-medium">{b.nic || b.Nic || b.ownerNIC}</div>
+                        <div className="text-xs text-slate-500">{(b.date||b.Date) + ' ' + (b.start||b.Start) + ' - ' + (b.end||b.End)}</div>
+                      </div>
+                      <div className="text-sm text-amber-600">{b.status || b.Status || 'Pending'}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

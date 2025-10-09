@@ -15,6 +15,7 @@ import BookingQR from './pages/BookingQR'
 import Users from './pages/Users'
 import OperatorDashboard from './pages/OperatorDashboard'
 import OperatorBookings from './pages/OperatorBookings'
+import Schedules from './pages/Schedules'
 import { useMemo } from 'react'
 import { useAuth } from './auth/useAuth'
 import { Navigate } from 'react-router-dom'
@@ -94,11 +95,13 @@ export default function App() {
           />
 
           <Route path="bookings" element={<RequireRole roles={['Backoffice']}><Bookings /></RequireRole>} />
+          <Route path="schedules" element={<RequireRole roles={['Backoffice']}><Schedules /></RequireRole>} />
           <Route path="bookings/new" element={<RequireRole roles={['Backoffice']}><BookingForm /></RequireRole>} />
           <Route path="bookings/:id" element={<RequireRole roles={['Backoffice']}><BookingForm /></RequireRole>} />
           <Route path="bookings/:id/qr" element={<RequireRole roles={['Backoffice']}><BookingQR /></RequireRole>} />
           <Route path="operator" element={<RequireRole roles={["Operator"]}><OperatorDashboard/></RequireRole>} />
           <Route path="operator/bookings" element={<RequireRole roles={["Operator"]}><OperatorBookings/></RequireRole>} />
+          {/* Operator station detail moved into OperatorDashboard; no separate route needed */}
         </Route>
       </Routes>
       <Toaster/>

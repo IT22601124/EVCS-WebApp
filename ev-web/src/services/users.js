@@ -138,13 +138,7 @@ export async function deactivateUser(username) {
 
 export async function activateUser(username) {
   try {
-    // server doesn't expose a dedicated activate endpoint in api/users.js; reuse updateUser with isActive=true if available
-    // Try calling a dedicated endpoint first (api may expose it later)
-    if (api.activateUser) {
-      const data = await api.activateUser(username);
-      return data;
-    }
-    // fallback: fetch user, patch isActive=true
+    // server doesn't expose a dedicated activate endpoint in api/users.js; use updateUser with isActive=true
     const u = await api.getUser(username);
     const patched = { ...u, isActive: true };
     const data = await api.updateUser(username, patched);

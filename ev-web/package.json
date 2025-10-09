@@ -21,9 +21,9 @@
     "zod": "^4.1.11"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.0.0",
-    "@testing-library/react": "^14.0.0",
-    "@testing-library/user-event": "^15.0.0",
+  "@testing-library/jest-dom": "^6.0.0",
+  "@testing-library/react": "^14.0.0",
+  "@testing-library/user-event": "^14.0.0",
     "vitest": "^1.4.5",
     "@eslint/js": "^9.36.0",
     "@tailwindcss/postcss": "^4.1.13",

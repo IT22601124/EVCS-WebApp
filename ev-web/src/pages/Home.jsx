@@ -44,16 +44,41 @@ export default function Home() {
         {/* Illustration */}
         <div className="relative">
           <div className="absolute -inset-4 -z-10 blur-2xl bg-blue-100 rounded-3xl"></div>
-          <div className="rounded-2xl border bg-white p-5 shadow-sm">
-            <div className="h-56 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 grid place-items-center">
-              <span className="text-slate-400">App preview</span>
+            <div className="rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-[color:var(--evcs-a)] to-[color:var(--evcs-b)] p-6 flex items-center justify-center" style={{height: '320px'}}>
+              <svg viewBox="0 0 600 320" className="w-full h-full" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="g1" x1="0" x2="1">
+                    <stop offset="0%" stopColor="var(--evcs-a)" />
+                    <stop offset="100%" stopColor="var(--evcs-b)" />
+                  </linearGradient>
+                  <filter id="f1" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="12" stdDeviation="18" floodColor="#000" floodOpacity="0.18" />
+                  </filter>
+                </defs>
+                <rect x="0" y="0" width="600" height="320" rx="20" fill="url(#g1)" />
+                <g transform="translate(60,40) scale(0.9)" filter="url(#f1)">
+                  <path d="M20 180 C60 120, 140 100, 220 120 C300 140, 400 120, 520 80 L540 200 L20 200 Z" fill="rgba(255,255,255,0.06)" />
+                  <g transform="translate(40,10)">
+                    <rect x="0" y="30" rx="18" ry="18" width="320" height="120" fill="#ffffff" opacity="0.06" />
+                    <circle cx="380" cy="90" r="36" fill="#ffffff" opacity="0.08" />
+                    <g transform="translate(20,50)">
+                      <rect x="0" y="0" width="220" height="60" rx="10" fill="#fff" opacity="0.12" />
+                      <rect x="12" y="12" width="80" height="36" rx="8" fill="var(--evcs-d)" />
+                      <rect x="104" y="12" width="96" height="36" rx="8" fill="var(--evcs-c)" opacity="0.95" />
+                    </g>
+                  </g>
+                </g>
+              </svg>
+              <div className="absolute left-6 bottom-6">
+                <div className="px-4 py-3 rounded-xl accent-evcs-green shadow-lg inline-flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg grid place-items-center bg-white/10">⚡</div>
+                  <div>
+                    <div className="text-sm text-white/95 font-semibold">Instant reservations</div>
+                    <div className="text-xs text-white/75">Reserve a slot in seconds</div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="mt-4 grid grid-cols-3 gap-3">
-              <Card label="Owners" />
-              <Card label="Stations" />
-              <Card label="Bookings" />
-            </div>
-          </div>
         </div>
       </section>
 
